@@ -66,12 +66,12 @@ class SvnService extends SCMService {
         ISVNOptions options = SVNWCUtil.createDefaultOptions(true);
         svnClientManager = SVNClientManager.newInstance(options, authManager);
 
-        project.logger.info("Getting working copy status")
+        project.logger.info("Getting working copy status in project dir: ${project.projectDir}")
         wcStatus = svnClientManager.getStatusClient().doStatus(project.projectDir,false)
         project.logger.info("Got svn version: "+getSCMVersion())
 
         //not sure if the code below is required
-        def svnRepo = SVNRepositoryFactory.create(wcStatus.getURL())
+        svnRepo = SVNRepositoryFactory.create(SVNURL.parseURIEncoded(getSvnRootURL()))
         svnRepo.setAuthenticationManager(authManager);
     }
 
@@ -88,6 +88,7 @@ class SvnService extends SCMService {
     def boolean hasLocalModifications() {
         def repoStatus = new UpToDateChecker()
         svnClientManager.getStatusClient().doStatus(project.rootDir, true, false, false, false, repoStatus)
+        project.logger.debug("svn status type during release modification check is: ${repoStatus.statusType}")
         return repoStatus.hasModifications()
     }
 
@@ -126,6 +127,14 @@ class SvnService extends SCMService {
     def boolean onBranch() {
         return getSCMRemoteURL().getPath().contains("/branches/")
     }
+
+    def boolean onGenerateNewTag() {
+        return project.extensions.release.generateNewVersion
+    }
+
+    def String getBaseVersion() {
+        return project.extensions.release.baseVersion
+    }
     
     def String getBranchName() {
         List splitPath = Arrays.asList(getSCMRemoteURL().getPath().split("/"))
@@ -143,22 +152,29 @@ class SvnService extends SCMService {
             assert(splitPath.indexOf("branches") < splitPath.size()-1)
             return splitPath.get(splitPath.size()-1)
         }
+
+        if (onGenerateNewTag()){
+            assert(splitPath.indexOf("trunk") > 0)
+        }
         
         return "trunk"
     }
 
     def String getLatestReleaseTag(String currentBranch) {
-        def entries = svnRepo.getDir( "tags", -1 , null , (Collection) null );
-        SVNDirEntry max = entries.max{it2->
-            def matcher = releaseTagPattern.matcher(it2.name);
-            if (matcher.matches() && branchName.equals(matcher.group(1))) {
-              return Integer.valueOf(matcher.group(2))
-            } else {
-              return null
-            }
-        }
-        return max.name
-    }  
+
+        SVNDirEntry max = getLatestReleaseTagAsEntry(currentBranch)
+        project.logger.debug("max tag: ${max}")
+
+        return max?.name
+    }
+
+    def String getLatestReleaseTagRevision(String currentBranch) {
+
+        SVNDirEntry max = getLatestReleaseTagAsEntry(currentBranch)
+        project.logger.debug("max tag: ${max}")
+
+        return max?.getRevision()?.toString()
+    }
 
     /**
     * creates a url for the new tag
@@ -183,6 +199,8 @@ class SvnService extends SCMService {
         }
         tagsURL = tagsURL.appendPath(tag,false)
 
+        project.logger.info("tags url for $project will be: ${tagsURL}")
+
         return tagsURL
     }
 
@@ -203,5 +221,17 @@ class SvnService extends SCMService {
             true, 
             message,
             null)
+    }
+
+    private def SVNDirEntry getLatestReleaseTagAsEntry(String currentBranch) {
+        project.logger.info(svnRepo.getLocation().toString())
+        def entries = svnRepo.getDir("tags", -1 , null , (Collection) null );
+        def filteredEntries = entries.findAll{it.name.contains("${currentBranch}-RELEASE")}
+        if (filteredEntries){
+            return filteredEntries.sort().last()
+        }else{
+            project.logger.info("there was not tag for that branch yet.")
+            return null
+        }
     }
 }

@@ -15,18 +15,14 @@
  */
 package au.com.ish.gradle
 
-import org.tmatesoft.svn.core.SVNDepth
 import org.tmatesoft.svn.core.SVNException
-import org.tmatesoft.svn.core.internal.io.fs.FSRepositoryFactory
-import org.tmatesoft.svn.core.internal.io.svn.SVNRepositoryFactoryImpl
 import org.tmatesoft.svn.core.wc.ISVNStatusHandler
-import org.tmatesoft.svn.core.wc.SVNClientManager
-import org.tmatesoft.svn.core.wc.SVNRevision
 import org.tmatesoft.svn.core.wc.SVNStatus
 import org.tmatesoft.svn.core.wc.SVNStatusType
 
 class UpToDateChecker implements ISVNStatusHandler {
     boolean hasModifications = false;
+    SVNStatusType statusType = null;
 
     UpToDateChecker() {
     }
@@ -34,10 +30,20 @@ class UpToDateChecker implements ISVNStatusHandler {
     public boolean hasModifications() {
         return hasModifications
     }
+
+    SVNStatusType getStatusType(){
+        return statusType
+    }
     
     public void handleStatus(SVNStatus status) throws SVNException {
         SVNStatusType statusType = status.getContentsStatus()
-        if (statusType != SVNStatusType.STATUS_NONE && statusType != SVNStatusType.STATUS_NORMAL && statusType != SVNStatusType.STATUS_IGNORED) {
+        this.statusType = statusType
+        if (statusType != SVNStatusType.STATUS_NONE &&
+                statusType != SVNStatusType.STATUS_NORMAL &&
+                statusType != SVNStatusType.STATUS_IGNORED &&
+                statusType != SVNStatusType.STATUS_EXTERNAL &&
+                statusType != SVNStatusType.STATUS_UNVERSIONED ) {
+
             hasModifications = true
         }
     }

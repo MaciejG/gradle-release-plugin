@@ -41,6 +41,7 @@ release {
     releaseDryRun = project.hasProperty('releaseDryRun') ? project.releaseDryRun=='true' : ''
     allowLocalModifications = project.hasProperty('allowLocalModifications') ? project.allowLocalModifications='true' : ''
 }
+
 version = release.projectVersion
 
 group = 'au.com.ish.gradle'
@@ -80,26 +81,20 @@ uploadArchives.repositories.mavenDeployer {
 
 	beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-	snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-		authentication(userName: sonatypeUsername, password: sonatypePassword)
+	snapshotRepository(url: "http://telum23:11159/nexus/content/repositories/snapshots/") {
+		authentication(userName: nexusUser, password: nexusPassword)
 	}
 
-	repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-		authentication(userName: sonatypeUsername, password: sonatypePassword)
+	repository(url: "http://telum23:11159/nexus/conte\nt/repositories/releases/") {
+		authentication(userName: nexusUser, password: nexusPassword)
 	}
 
 	pom.project {
 		name 'Gradle Release plugin'
 		packaging 'jar'
 		description 'The Gradle Release plugin.'
-		url 'http://github.com/ari/gradle-release-plugin'
+		url 'https://github.com/MaciejG/gradle-release-plugin'
 		inceptionYear '2012'
-
-		scm {
-			developerConnection 'git@github.com:ari/gradle-release-plugin.git'
-			connection 'git://github.com/ari/gradle-release-plugin.git'
-			url 'https://github.com/ari/gradle-release-plugin'
-		}
 
 		licenses {
 			license {
@@ -110,27 +105,17 @@ uploadArchives.repositories.mavenDeployer {
 		}
 		developers {
 			developer {
-				id 'ari'
-				name 'Ari Maniatis'
-				email 'ari@ish.com.au'
+				id 'MaciejG'
+				name 'Maciej Gorączka'
+				email 'maciej@goraczka.com'
 				roles {
 					role 'Developer'
 				}
-				timezone '+10'
-			}
-			developer {
-				id 'marcin'
-				name 'Marcin Skladaniec'
-				email 'marcin@ish.com.au'
-				roles {
-					role 'Developer'
-				}
-				timezone '+10'
 			}
 		}
 	}
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '1.11'
+    gradleVersion = '2.2.1'
 }

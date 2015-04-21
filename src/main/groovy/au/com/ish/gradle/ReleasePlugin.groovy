@@ -15,14 +15,12 @@
  */
 package au.com.ish.gradle
 
+import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
-import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
-import org.gradle.api.GradleException
 import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.tasks.testing.*
 
 class ReleasePlugin implements Plugin<Project> {
     private final String TASK_RELEASE = 'release'
@@ -31,11 +29,13 @@ class ReleasePlugin implements Plugin<Project> {
 
     def void apply(Project project) {
         this.project = project
-        project.logger.info("Applying ReleasePlugin to project: "+project.name)
+        project.logger.info("Applying ReleasePlugin to project: " + project.name)
         ReleasePluginExtension extension = project.getExtensions().create("release", ReleasePluginExtension.class, this);
 
         Task releaseTask = project.task(TASK_RELEASE) {
-            doFirst {
+            doLast {
+                project.logger.info("Analyzing release of project: name(${project.name}) group(${project.group}) version(${getProjectVersion()}) path(${project.projectDir})")
+
                 if (project.release.failOnSnapshotDependencies) {
 
                     def snapshotDependencies = [] as Set
@@ -44,7 +44,9 @@ class ReleasePlugin implements Plugin<Project> {
                         currentProject.configurations.each { configuration ->
                             project.logger.info("Checking for snapshot dependencies in $currentProject.path -> $configuration.name")
                             configuration.allDependencies.each { Dependency dependency ->
-                                if (dependency.version?.contains('SNAPSHOT') && !(dependency instanceof ProjectDependency)) {
+                                if ((dependency.version?.contains('SNAPSHOT') || dependency.version?.endsWith('+')) &&
+                                        !(dependency instanceof ProjectDependency)) {
+
                                     snapshotDependencies.add("${dependency.group}:${dependency.name}:${dependency.version}")
                                 }
                             }
@@ -64,14 +66,17 @@ class ReleasePlugin implements Plugin<Project> {
                     throw new GradleException('Project contains changed which are not pushed to the remote repository.');
                 }
 
-                if (! getSCMService().onTag()) {
+                if (!getSCMService().onTag() && !getSCMVersion().equals(getSCMLatestTagVersion())) {
                     def msg = "#0000 Release ${project.version} from branch ${getSCMService().getBranchName()}"
                     if (extension.getReleaseDryRun()) {
-                        project.logger.lifecycle("Scm would be tagged now, but releaseDryRun=true was specified.");
+                        project.logger.lifecycle("Scm would be tagged now, but releaseDryRun=true was specified. " +
+                                "Branch name would be: " + project.version);
                     } else {
                         project.logger.lifecycle("Tag! you are it! Release plugin will create a new branch ${getSCMService().getBranchName()} for project ${project.name}");
-                        getSCMService().performTagging( getSCMService().getBranchName() + "-RELEASE-" + project.version, msg)
+                        getSCMService().performTagging(project.version, msg)
                     }
+                } else if (getSCMVersion().equals(getSCMLatestTagVersion())) {
+                    project.logger.info("I will not make a release because last TAG has the samve version number")
                 }
             }
         }
@@ -80,10 +85,10 @@ class ReleasePlugin implements Plugin<Project> {
     }
 
     def String getProjectVersion() {
-        project.logger.debug("release version specified? "+hasProperty('releaseVersion'))
+        project.logger.debug("release version specified? " + hasProperty('releaseVersion'))
 
         if (project.hasProperty('releaseVersion')) {
-            project.logger.info("release version specified: " +project.releaseVersion+" won't attempt to use scm service to establish project version")
+            project.logger.info("release version specified: " + project.releaseVersion + " won't attempt to use scm service to establish project version")
             return project.releaseVersion
         }
 
@@ -92,17 +97,37 @@ class ReleasePlugin implements Plugin<Project> {
             return getSCMService().getBranchName()
         }
 
-        project.logger.info("build based on trunk, using SNAPSHOT project version")
-        return getSCMService().getBranchName() + "-SNAPSHOT"
+        if (getSCMService().onGenerateNewTag()) {
+            def nextVersion = getSCMService().getBranchName() + '-RELEASE-' + getSCMService().getNextVersion()
+            project.logger.info("build based on trunk, not using SNAPSHOT project version because generate next was used. Next version is: ${nextVersion}")
+            return nextVersion
+        }
+
+        project.logger.info("build based on trunk, using SNAPSHOT project version considering the last tag")
+        def latestReleaseTagForBranch = getSCMService().getLatestReleaseTag(getSCMService().getBranchName())
+        if (latestReleaseTagForBranch == null) {
+            return project.version
+        } else {
+            return getSCMService().getBranchName() + '-RELEASE-' + getSCMService().getNextVersion() + "-SNAPSHOT"
+        }
     }
 
     def String getSCMVersion() {
         return getSCMService().getSCMVersion()
     }
 
+    def boolean getHasLocalModifications() {
+        return getSCMService().hasLocalModifications()
+    }
+
+    def String getSCMLatestTagVersion() {
+        return getSCMService().getLatestReleaseTagRevision(getSCMService().getBranchName())
+    }
+
     /*
         Lazily instantiate the SCMService when it is needed, or return the existing service if we've already created it before
     */
+
     def SCMService getSCMService() {
         if (scmService) return scmService
 

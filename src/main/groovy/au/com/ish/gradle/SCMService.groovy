@@ -16,12 +16,16 @@
 package au.com.ish.gradle
 
 abstract public class SCMService {
-	protected final def releaseTagPattern = ~/^(\S+)-REL-(\d+)$/
+	protected final def releaseTagPattern = ~/^(\S+)-RELEASE-(\d+)/
 
 	/*
 		Are we on a tag or a normal branch
 	*/
 	def abstract boolean onTag()
+
+	def abstract boolean onGenerateNewTag()
+
+	def abstract String getBaseVersion()
 
 	/*
 		The name of the current branch we are on. For svn, this is just the last part of the path to the repo
@@ -38,6 +42,8 @@ abstract public class SCMService {
 		and we have tags called 'master-RELEASE-1' and 'master-RELEASE-2' then this will return 'master-RELEASE-2'
 	*/
 	def abstract String getLatestReleaseTag(String currentBranch)
+
+    def abstract String getLatestReleaseTagRevision(String currentBranch);
 
 	/*
 		Return true if the local checkout has changes which aren't in the remote repository
@@ -69,14 +75,14 @@ abstract public class SCMService {
 
         if (latestReleaseTag) {
 	        def tagNameParts = latestReleaseTag.split('-').toList()
-	        def currentVersion = tagNameParts[-1]
-	        return project.release.versionStrategy.call(currentVersion)
-
+	        def latestReleaseTagVersion = tagNameParts[-1]
+			def computedNewProjectVersion = project.release.versionStrategy.call(latestReleaseTagVersion, getBaseVersion())
+			project.logger.info("tag for given branch exists. computed new project version for branch: ${computedNewProjectVersion}")
+			return computedNewProjectVersion
         } else {
-            return project.release.startVersion.call(currentBranch)
+			def firstProjectVersion = project.release.startVersion.call(getBaseVersion())
+			project.logger.info("tag for given branch does not exist. first project version for branch: ${firstProjectVersion}")
+			return firstProjectVersion
         }
     }
-
-
-
 }

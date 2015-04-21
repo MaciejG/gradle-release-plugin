@@ -50,6 +50,11 @@ class GitService extends SCMService {
             "--format=%(refname:short)", "refs/tags/${tagSearchPattern}"])
     }
 
+    @Override
+    String getLatestReleaseTagRevision(String currentBranch) {
+        return "0"
+    }
+
     String getSCMVersion() {
         return "abc" //TODO: implement
     }
@@ -61,6 +66,14 @@ class GitService extends SCMService {
             }
         } catch (Exception e) {}
         return false
+    }
+
+    boolean onGenerateNewTag() {
+        return false
+    }
+
+    String getBaseVersion() {
+        return null
     }
 
     def String getBranchName() {
