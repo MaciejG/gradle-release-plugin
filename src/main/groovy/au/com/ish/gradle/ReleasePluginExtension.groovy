@@ -56,6 +56,7 @@ class ReleasePluginExtension {
     private boolean allowLocalModifications = false
     private boolean generateNewVersion = false
     private String baseVersion
+    private String extraMsg
 
     public ReleasePluginExtension(ReleasePlugin plugin) {
         this.plugin = plugin
@@ -206,5 +207,13 @@ class ReleasePluginExtension {
 
     void setBaseVersion(String baseVersion) {
         this.baseVersion = baseVersion
+    }
+
+    String getExtraMsg() {
+        return extraMsg
+    }
+
+    void setExtraMsg(String extraMsg) {
+        this.extraMsg = extraMsg
     }
 }

@@ -70,10 +70,10 @@ class ReleasePlugin implements Plugin<Project> {
                     def msg = "#0000 Release ${project.version} from branch ${getSCMService().getBranchName()}"
                     if (extension.getReleaseDryRun()) {
                         project.logger.lifecycle("Scm would be tagged now, but releaseDryRun=true was specified. " +
-                                "Branch name would be: " + project.version);
+                                "Branch name would be: " + project.version + ". Message when releasing would be: " + msg + ". " + extension.getExtraMsg());
                     } else {
                         project.logger.lifecycle("Tag! you are it! Release plugin will create a new branch ${getSCMService().getBranchName()} for project ${project.name}");
-                        getSCMService().performTagging(project.version, msg)
+                        getSCMService().performTagging(project.version, msg + ". " + extension.getExtraMsg())
                     }
                 } else if (getSCMVersion().equals(getSCMLatestTagVersion())) {
                     project.logger.info("I will not make a release because last TAG has the samve version number")
