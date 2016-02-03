@@ -90,6 +90,10 @@ class ReleasePluginExtension {
         return plugin.getSCMVersion()
     }
 
+    public String getScmMessage() {
+        return plugin.getSCMMessage()
+    }
+
     public boolean getHasLocalModifications() {
         return plugin.getHasLocalModifications()
     }

@@ -59,6 +59,10 @@ class GitService extends SCMService {
         return "abc" //TODO: implement
     }
 
+    String getSCMMessage() {
+        return "abc" //TODO: implement
+    }
+
     def boolean onTag() {
         try {
             if (releaseTagPattern.matcher(tagNameOnCurrentRevision()).matches()) {

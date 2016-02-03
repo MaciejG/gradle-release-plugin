@@ -29,7 +29,7 @@ class ReleasePlugin implements Plugin<Project> {
 
     def void apply(Project project) {
         this.project = project
-        project.logger.info("Applying ReleasePlugin to project: " + project.name)
+        project.logger.info("Applying ReleasePlugin to project ! : " + project.name)
         ReleasePluginExtension extension = project.getExtensions().create("release", ReleasePluginExtension.class, this);
 
         Task releaseTask = project.task(TASK_RELEASE) {
@@ -99,7 +99,7 @@ class ReleasePlugin implements Plugin<Project> {
 
         if (getSCMService().onGenerateNewTag()) {
             def nextVersion = getSCMService().getBranchName() + '-RELEASE-' + getSCMService().getNextVersion()
-            project.logger.info("build based on trunk, not using SNAPSHOT project version because generate next was used. Next version is: ${nextVersion}")
+            project.logger.info("build based on branch/trunk, not using SNAPSHOT project version because generate next was used. Next version is: ${nextVersion}")
             return nextVersion
         }
 
@@ -114,6 +114,10 @@ class ReleasePlugin implements Plugin<Project> {
 
     def String getSCMVersion() {
         return getSCMService().getSCMVersion()
+    }
+
+    def String getSCMMessage() {
+        return getSCMService().getSCMMessage()
     }
 
     def boolean getHasLocalModifications() {

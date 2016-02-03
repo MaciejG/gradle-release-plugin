@@ -38,6 +38,11 @@ abstract public class SCMService {
 	def abstract String getSCMVersion()
 
 	/*
+		Returns message that was submitted during this revision commit
+	 */
+	def abstract String getSCMMessage()
+
+	/*
 		The highest release tag in the repository for this branch. For example if the current branch is "master"
 		and we have tags called 'master-RELEASE-1' and 'master-RELEASE-2' then this will return 'master-RELEASE-2'
 	*/
@@ -77,11 +82,11 @@ abstract public class SCMService {
 	        def tagNameParts = latestReleaseTag.split('-').toList()
 	        def latestReleaseTagVersion = tagNameParts[-1]
 			def computedNewProjectVersion = project.release.versionStrategy.call(latestReleaseTagVersion, getBaseVersion())
-			project.logger.info("tag for given branch exists. computed new project version for branch: ${computedNewProjectVersion}")
+			project.logger.info("tag for given branch (" + currentBranch + ") exists. computed new project version for branch: ${computedNewProjectVersion}")
 			return computedNewProjectVersion
         } else {
 			def firstProjectVersion = project.release.startVersion.call(getBaseVersion())
-			project.logger.info("tag for given branch does not exist. first project version for branch: ${firstProjectVersion}")
+			project.logger.info("tag for given branch (" + currentBranch + ") does not exist. first project version for branch: ${firstProjectVersion}")
 			return firstProjectVersion
         }
     }

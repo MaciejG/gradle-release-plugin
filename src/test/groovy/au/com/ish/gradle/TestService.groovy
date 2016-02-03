@@ -44,12 +44,31 @@ class TestService extends SCMService {
         return "test-RELEASE-11"
     }
 
+    @Override
+    String getLatestReleaseTagRevision(String currentBranch) {
+        return null
+    }
+
     String getSCMVersion() {
+        return "abc"
+    }
+
+    String getSCMMessage() {
         return "abc"
     }
 
     def boolean onTag() {
         return false
+    }
+
+    @Override
+    boolean onGenerateNewTag() {
+        return false
+    }
+
+    @Override
+    String getBaseVersion() {
+        return null
     }
 
     def String getBranchName() {

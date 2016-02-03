@@ -33,7 +33,7 @@ class SvnService extends SCMService {
     def private svnClientManager
 
     private SVNRepository svnRepo;
-    
+
     SvnService() {
         //private constructor only used for tests
     }
@@ -54,11 +54,11 @@ class SvnService extends SCMService {
         project.logger.info("SvnService authentication manager setup")
         def ISVNAuthenticationManager authManager
         if (scmCreditenialsProvided()) {
-            project.logger.lifecycle("Release plugin is using subversion scm with provided authentication details (user "+project.extensions.release.username+")")
-            authManager= SVNWCUtil.createDefaultAuthenticationManager(project.extensions.release.username, project.extensions.release.password);
+            project.logger.lifecycle("Release plugin is using subversion scm with provided authentication details (user " + project.extensions.release.username + ")")
+            authManager = SVNWCUtil.createDefaultAuthenticationManager(project.extensions.release.username, project.extensions.release.password);
         } else {
             project.logger.lifecycle("Release plugin is using subversion scm with authentication details from svn config")
-            authManager= SVNWCUtil.createDefaultAuthenticationManager();
+            authManager = SVNWCUtil.createDefaultAuthenticationManager();
         }
 
         // svn client manager has to be defined with authManager, otherwise it will use the default one (important for the performTagging)
@@ -67,8 +67,8 @@ class SvnService extends SCMService {
         svnClientManager = SVNClientManager.newInstance(options, authManager);
 
         project.logger.info("Getting working copy status in project dir: ${project.projectDir}")
-        wcStatus = svnClientManager.getStatusClient().doStatus(project.projectDir,false)
-        project.logger.info("Got svn version: "+getSCMVersion())
+        wcStatus = svnClientManager.getStatusClient().doStatus(project.projectDir, false)
+        project.logger.info("Got svn version: " + getSCMVersion())
 
         //not sure if the code below is required
         svnRepo = SVNRepositoryFactory.create(SVNURL.parseURIEncoded(getSvnRootURL()))
@@ -80,7 +80,7 @@ class SvnService extends SCMService {
         def boolean passwordDefined = project.extensions.release.password != null && project.extensions.release.password.length() > 0
         return userDefined && passwordDefined
     }
-    
+
     def boolean localIsAheadOfRemote() {
         return false
     }
@@ -112,12 +112,16 @@ class SvnService extends SCMService {
         if (svnRootUrlString.contains("/branches/")) {
             return svnRootUrlString.substring(0, svnRootUrlString.indexOf("/branches/"))
         }
-        
+
         return svnRootUrlString.substring(0, svnRootUrlString.indexOf("/trunk"))
     }
-  
+
     def String getSCMVersion() {
         return wcStatus.getRevision().getNumber().toString()
+    }
+
+    def String getSCMMessage() {
+        return svnRepo.getDir(null, wcStatus.getRevision().getNumber(), true, (Collection) null)?.getCommitMessage();
     }
 
     def boolean onTag() {
@@ -135,28 +139,28 @@ class SvnService extends SCMService {
     def String getBaseVersion() {
         return project.extensions.release.baseVersion
     }
-    
+
     def String getBranchName() {
         List splitPath = Arrays.asList(getSCMRemoteURL().getPath().split("/"))
 
         // if svn URL contains "/tags/", then find the name of the branch
         if (onTag()) {
-            assert(splitPath.indexOf("tags") > 0)
-            assert(splitPath.indexOf("tags") < splitPath.size()-1)
-            return splitPath.get(splitPath.size()-1)
+            assert (splitPath.indexOf("tags") > 0)
+            assert (splitPath.indexOf("tags") < splitPath.size() - 1)
+            return splitPath.get(splitPath.size() - 1)
         }
 
         // if svn URL contains "/branches/", then find the name of the branch
         if (onBranch()) {
-            assert(splitPath.indexOf("branches") > 0)
-            assert(splitPath.indexOf("branches") < splitPath.size()-1)
-            return splitPath.get(splitPath.size()-1)
+            assert (splitPath.indexOf("branches") > 0)
+            assert (splitPath.indexOf("branches") < splitPath.size() - 1)
+            return splitPath.get(splitPath.size() - 1)
         }
 
-        if (onGenerateNewTag()){
-            assert(splitPath.indexOf("trunk") > 0)
+        if (onGenerateNewTag()) {
+            assert (splitPath.indexOf("trunk") > 0)
         }
-        
+
         return "trunk"
     }
 
@@ -177,8 +181,8 @@ class SvnService extends SCMService {
     }
 
     /**
-    * creates a url for the new tag
-    */
+     * creates a url for the new tag
+     */
     def SVNURL createTagsUrl(String tag) {
         if (project != null) {
             project.logger.info("$project, Crafting new tag: $tag")
@@ -186,10 +190,10 @@ class SvnService extends SCMService {
         // root url to use for tagging
         def SVNURL rootURL = SVNURL.parseURIDecoded(getSvnRootURL())
 
-        def SVNURL tagsURL = rootURL.appendPath("tags",false)
+        def SVNURL tagsURL = rootURL.appendPath("tags", false)
 
         // need to preseve the path elements after 'branches'/'tags'/'trunk' and the branch name
-        String urlTail = getSCMRemoteURL().toString().replace(getSvnRootURL(),"").replace("branches", "").replace("tags", "").replace(getBranchName(), "")
+        String urlTail = getSCMRemoteURL().toString().replace(getSvnRootURL(), "").replace("branches", "").replace("tags", "").replace(getBranchName(), "")
 
         List splitUrlTail = Arrays.asList(urlTail.split("/"))
         for (String pathElement : splitUrlTail) {
@@ -197,7 +201,7 @@ class SvnService extends SCMService {
                 tagsURL = tagsURL.appendPath(pathElement, false);
             }
         }
-        tagsURL = tagsURL.appendPath(tag,false)
+        tagsURL = tagsURL.appendPath(tag, false)
 
         project.logger.info("tags url for $project will be: ${tagsURL}")
 
@@ -206,30 +210,37 @@ class SvnService extends SCMService {
 
     def performTagging(String tag, String message) {
         project.logger.info("$project, Tagging release: $tag")
-        
+
         def tagsURL = createTagsUrl(tag)
-        
+
         //javadoc helper :
         //doCopy(SVNCopySource[] sources, SVNURL dst, 
         //                          boolean isMove, boolean makeParents, boolean failWhenDstExists, 
         //                          java.lang.String commitMessage, SVNProperties revisionProperties) 
         svnClientManager.getCopyClient().doCopy(
-            [new SVNCopySource(SVNRevision.HEAD, SVNRevision.HEAD, wcStatus.URL)] as SVNCopySource[],
-            tagsURL, 
-            false, 
-            true, 
-            true, 
-            message,
-            null)
+                [new SVNCopySource(SVNRevision.HEAD, SVNRevision.HEAD, wcStatus.URL)] as SVNCopySource[],
+                tagsURL,
+                false,
+                true,
+                true,
+                message,
+                null)
     }
 
     private def SVNDirEntry getLatestReleaseTagAsEntry(String currentBranch) {
         project.logger.info(svnRepo.getLocation().toString())
-        def entries = svnRepo.getDir("tags", -1 , null , (Collection) null );
-        def filteredEntries = entries.findAll{it.name.contains("${currentBranch}-RELEASE")}
-        if (filteredEntries){
-            return filteredEntries.sort().last()
-        }else{
+        def entries = svnRepo.getDir("tags", -1, null, (Collection) null);
+        def filteredEntries = entries.findAll { it.name.contains("${currentBranch}-RELEASE") }
+        if (filteredEntries) {
+            return filteredEntries.sort(false) { a, b ->
+                [a.name - "${currentBranch}-RELEASE-", b.name - "${currentBranch}-RELEASE-"]*.tokenize('.')*.collect {
+                    it as int
+                }.
+                        with { u, v ->
+                            [u, v].transpose().findResult { x, y -> x <=> y ?: null } ?: u.size() <=> v.size()
+                        }
+            }[-1]
+        } else {
             project.logger.info("there was not tag for that branch yet.")
             return null
         }
